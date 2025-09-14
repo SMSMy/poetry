@@ -1,0 +1,78 @@
+<?php
+set_time_limit(0);
+require 'config.php';
+require 'functions.php'; // يستدعي الدوال الجديدة
+
+set_time_limit(600);
+ob_implicit_flush(true); ob_end_flush();
+
+$dir = __DIR__ . '/json_data';
+$files = glob("$dir/*.json");
+if (empty($files)) die('خطأ: لا توجد ملفات JSON للاستيراد.');
+
+echo "<h3>بدء استيراد " . count($files) . " ملف شاعر...</h3><hr>";
+echo "<div style='font-family: monospace; line-height: 1.8; font-size: 14px;'>";
+
+foreach ($files as $file) {
+    // =====>>> الاعتماد على اسم الملف كمصدر للاسم <<<=====
+    $poetName = basename($file, '.json');
+    // تنظيف إضافي لإزالة أي شيء مثل (2) في نهاية الاسم
+    $poetName = preg_replace('/ \(\d+\)$/', '', $poetName);
+    $poetName = trim($poetName);
+    
+    echo "<div><strong style='color: #007bff;'>-- جاري معالجة: $poetName</strong></div>"; flush();
+
+    $data = json_decode(file_get_contents($file), true);
+    if (!isset($data['info']) || empty(trim($data['info']))) { 
+        echo "<div style='color: #dc3545;'>    ↳ تخطي، ملف JSON فارغ.</div><hr>"; continue;
+    }
+
+    // نحاول الحصول على العصر من القائمة الدقيقة
+    $poetEra = deduce_era($poetName);
+
+    if ($poetEra === null) {
+        echo "<div style='color: #fd7e14;'>    ↳ <strong>فشل!</strong> لم يتم العثور على عصر للشاعر `$poetName` في ملف `era_data.php`.</div>";
+        echo "<hr>";
+        continue;
+    }
+
+    $poetInfoRaw = trim($data['info']);
+    
+    $stmt = $pdo->prepare("SELECT id FROM poets WHERE name = ?");
+    $stmt->execute([$poetName]);
+    $poetId = $stmt->fetchColumn();
+
+    if (!$poetId) {
+        $stmt_insert = $pdo->prepare("INSERT INTO poets (name, era, info) VALUES (?, ?, ?)");
+        $stmt_insert->execute([$poetName, $poetEra, $poetInfoRaw]);
+        $poetId = $pdo->lastInsertId();
+        echo "<div style='color: #28a745;'>    ✅ <strong>نجاح:</strong> شاعر جديد أُضيف.</div>";
+    } else {
+        // تحديث البيانات في حال وجود الشاعر مسبقًا
+        $stmt_update = $pdo->prepare("UPDATE poets SET era = ?, info = ? WHERE id = ?");
+        $stmt_update->execute([$poetEra, $poetInfoRaw, $poetId]);
+        echo "<div style='color: #17a2b8;'>    ℹ️ <strong>نجاح:</strong> الشاعر موجود، تم تحديث بياناته.</div>";
+    }
+
+    // حذف القصائد القديمة لضمان عدم التكرار
+    $stmt_delete = $pdo->prepare("DELETE FROM poems WHERE poet_id = ?");
+    $stmt_delete->execute([$poetId]);
+
+    $poemCount = 0;
+    if (is_array($data)) {
+        foreach ($data as $key => $poem_data) {
+            if (is_numeric($key) && isset($poem_data['poem']) && !empty(trim($poem_data['poem']))) {
+                $first_line = explode("\n", trim($poem_data['poem']))[0];
+                $title = explode('//', $first_line)[0];
+
+                $stmt_poem = $pdo->prepare("INSERT INTO poems (poet_id, title, poem, bahr, qafiya) VALUES (?, ?, ?, ?, ?)");
+                $stmt_poem->execute([$poetId, $title, $poem_data['poem'], $poem_data['bahr'] ?? null, $poem_data['qafiya'] ?? null]);
+                $poemCount++;
+            }
+        }
+    }
+    echo "<div>    📚 تم إضافة/تحديث $poemCount قصيدة.</div><hr>"; flush();
+}
+echo "</div>";
+echo "<h2>🎉 تمت عملية الاستيراد.</h2>";
+?>
