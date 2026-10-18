@@ -122,6 +122,39 @@ function format_poem(string $poemText): string
 }
 
 /**
+ * فصل شرح مكتبة ديوان إلى الإضاءة الأدبية ومعاني المفردات.
+ * إذا لم تحمل البيانات العناوين المعروفة، تُعاد كاملةً كنص عام.
+ *
+ * @return array{literary:string,vocabulary:string,general:string}
+ */
+function split_poem_explanation(string $explanation): array
+{
+    $result = ['literary' => '', 'vocabulary' => '', 'general' => ''];
+    $pattern = '/(?:^|\R)[\t ]*(إضاءة أدبية|معاني المفردات)[\t ]*(?:\R|$)/u';
+    $found = preg_match_all($pattern, $explanation, $matches, PREG_OFFSET_CAPTURE | PREG_SET_ORDER);
+
+    if (!$found) {
+        $result['general'] = trim($explanation);
+        return $result;
+    }
+
+    foreach ($matches as $index => $match) {
+        $heading = $match[1][0];
+        $start = $match[0][1] + strlen($match[0][0]);
+        $end = isset($matches[$index + 1]) ? $matches[$index + 1][0][1] : strlen($explanation);
+        $content = trim(substr($explanation, $start, $end - $start));
+        $key = $heading === 'إضاءة أدبية' ? 'literary' : 'vocabulary';
+
+        // لا نطمس قسمًا سابقًا إذا تكرر عنوانه في نص المصدر.
+        if ($result[$key] === '') {
+            $result[$key] = $content;
+        }
+    }
+
+    return $result;
+}
+
+/**
  * تنسيق نص سيرة الشاعر الخام إلى HTML مُهيكل.
  * 
  * صيغة السيرة الخام في ملفات JSON وبقاعدة البيانات:
@@ -165,7 +198,7 @@ function clean_poet_info(string $info): string
     $isDatesLine = function (string $line): bool {
         // سطر تاريخ مثل: "303 - 354 ه" أو "915 - 965 م" (قصير وفيه أرقام)
         // قياس الطول بالأحرف عبر /u بدل mb_strlen (توافقًا مع مضيفات بلا mbstring)
-        return preg_match('/^.{0,25}$/us', $line) === 1 && preg_match('/[\d\u0660-\u0669]/u', $line) === 1;
+        return preg_match('/^.{0,25}$/us', $line) === 1 && preg_match('/[\d\x{0660}-\x{0669}]/u', $line) === 1;
     };
 
     foreach ($parts as $part) {

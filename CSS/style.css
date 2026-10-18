@@ -952,6 +952,61 @@ a.poem-card:hover {
     background-color: rgba(212, 170, 125, 0.1);
 }
 
+/* شرح القصيدة */
+.poem-explanation {
+    margin-top: 48px;
+    padding: 28px;
+    border: 1px solid;
+    border-radius: var(--border-radius);
+    line-height: 2;
+}
+
+.light-mode .poem-explanation,
+.light-mode .explanation-part {
+    background: var(--light-card);
+    border-color: var(--light-border);
+    box-shadow: var(--shadow-light);
+}
+
+.dark-mode .poem-explanation,
+.dark-mode .explanation-part {
+    background: var(--dark-card);
+    border-color: var(--dark-border);
+    box-shadow: 0 4px 20px var(--dark-shadow);
+}
+
+.poem-explanation > h2 {
+    margin: 0 0 22px;
+    font-size: 30px;
+}
+
+.explanation-part {
+    margin-top: 18px;
+    padding: 20px 24px;
+    border: 1px solid;
+    border-radius: 12px;
+}
+
+.explanation-entry + .explanation-entry {
+    margin-top: 18px;
+}
+
+.explanation-part h3 {
+    margin: 0 0 10px;
+    font-size: 23px;
+}
+
+.explanation-text {
+    font-size: 19px;
+    white-space: normal;
+}
+
+.explanation-note {
+    margin: 18px 0 0;
+    font-size: 14px;
+    opacity: 0.72;
+}
+
 /* ===>>> التنسيقات الجديدة والمحسنة لصفحة البحث <<<=== */
 .search-results-section {
     margin-bottom: 60px;

@@ -9,6 +9,16 @@ $stmt->execute([$poem_id]);
 $poem_data = $stmt->fetch();
 if (!$poem_data) die('القصيدة المطلوبة غير موجودة.');
 
+$explanations = [];
+try {
+    $explanationStmt = $pdo->prepare('SELECT explanation FROM poem_explanations WHERE poem_id = ? ORDER BY source_poet_id, source_poem_id');
+    $explanationStmt->execute([$poem_id]);
+    $explanations = array_values(array_unique($explanationStmt->fetchAll(PDO::FETCH_COLUMN)));
+} catch (PDOException $e) {
+    // يبقى عرض القصيدة متاحًا قبل تشغيل مستورد الشروح وإنشاء جدوله.
+    error_log('تعذر تحميل شرح القصيدة: ' . $e->getMessage());
+}
+
 $pageTitle = htmlspecialchars($poem_data['title']) . ' - ' . htmlspecialchars($poem_data['poet_name']);
 require 'templates/header.php';
 ?>
@@ -32,6 +42,33 @@ require 'templates/header.php';
     <div class="poem-display-area">
         <?= format_poem($poem_data['poem']) ?>
     </div>
+    <?php if (!empty($explanations)): ?>
+        <section class="poem-explanation" aria-labelledby="poem-explanation-title">
+            <h2 id="poem-explanation-title">شرح القصيدة</h2>
+            <?php foreach ($explanations as $explanation): ?>
+                <?php if (trim((string)$explanation) === '') continue; ?>
+                <?php $explanationParts = split_poem_explanation((string)$explanation); ?>
+                <div class="explanation-entry">
+                    <?php if ($explanationParts['literary'] !== ''): ?>
+                        <section class="explanation-part">
+                            <h3>إضاءة أدبية</h3>
+                            <div class="explanation-text"><?= nl2br(htmlspecialchars($explanationParts['literary'], ENT_QUOTES, 'UTF-8')) ?></div>
+                        </section>
+                    <?php endif; ?>
+                    <?php if ($explanationParts['vocabulary'] !== ''): ?>
+                        <section class="explanation-part">
+                            <h3>معاني المفردات</h3>
+                            <div class="explanation-text"><?= nl2br(htmlspecialchars($explanationParts['vocabulary'], ENT_QUOTES, 'UTF-8')) ?></div>
+                        </section>
+                    <?php endif; ?>
+                    <?php if ($explanationParts['literary'] === '' && $explanationParts['vocabulary'] === '' && $explanationParts['general'] !== ''): ?>
+                        <div class="explanation-part explanation-text"><?= nl2br(htmlspecialchars($explanationParts['general'], ENT_QUOTES, 'UTF-8')) ?></div>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+            <p class="explanation-note">هذا الشرح مولّد آليًا، ويُقرأ للاستئناس لا بوصفه تحقيقًا أدبيًا.</p>
+        </section>
+    <?php endif; ?>
 </div>
 
 <?php require 'templates/footer.php'; ?>
