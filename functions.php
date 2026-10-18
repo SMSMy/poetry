@@ -10,10 +10,39 @@
 
 /** خريطة توحيد أسماء العصور (ما كان مستخدمًا في era_data.php بصيغ مختلفة) */
 $POETRY_ERA_ALIASES = [
-    'الجاهلي'      => 'العصر الجاهلي',
-    'الإسلامي'     => 'صدر الإسلام',
-    'العباسي'      => 'العباسي',
+    // من era_data.php القديم
+    'الجاهلي' => 'العصر الجاهلي',
+    'إسلامي'  => 'صدر الإسلام',
+    'الإسلامي' => 'صدر الإسلام',
+    'مخضرم (جاهلي وإسلامي)' => 'المخضرمون',
+    'مخضرم'   => 'المخضرمون',
+
+    // من ملفات poetry_data الجديدة (الأسماء: العصر الجاهلي، العصر الإسلامي، ...)
+    'عصر إسلامي'   => 'صدر الإسلام',
+    'العصر الإسلامي' => 'صدر الإسلام',
+    'العصر الأموي'  => 'الأموي',
+    'العصر العباسي' => 'العباسي',
+    'العصر الأندلسي' => 'الأندلسي',
+    'العصر الأيوبي' => 'الأيوبي',
+    'المملوكي'      => 'مملوكي',
+    'العصر المملوكي' => 'مملوكي',
+    'العصر العثماني' => 'عثماني',
+    'حديث'          => 'العصر الحديث',
 ];
+
+/** الترتيب المعياري للعصور المستخدم في جميع الصفحات */
+$POETRY_ERA_ORDER = [
+    'العصر الجاهلي', 'المخضرمون', 'صدر الإسلام', 'الأموي', 'العباسي',
+    'الأندلسي', 'الأيوبي', 'مملوكي', 'عثماني', 'العصر الحديث',
+];
+
+/** توحيد اسم عصر إلى صيغته المعيارية */
+function normalize_era(string $era): string
+{
+    global $POETRY_ERA_ALIASES;
+    $era = trim($era);
+    return $POETRY_ERA_ALIASES[$era] ?? $era;
+}
 
 /**
  * تحديد عصر الشاعر من القائمة المرجعية era_data.php.
@@ -121,7 +150,24 @@ function clean_poet_info(string $info): string
     }
 
     $html = '';
-    $partIndex = 0;
+
+    // الجزء الأول: اسم الشاعر المشكول (يُعرض أيضًا في h1 صفحة الشاعر)
+    $namePart = array_shift($parts);
+    $nameLines = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $namePart)), function ($l) {
+        return $l !== '';
+    }));
+    if (!empty($nameLines)) {
+        $html .= '<p class="poet-bio-name">' . htmlspecialchars(implode(' ', $nameLines), ENT_QUOTES, 'UTF-8') . '</p>';
+    }
+
+    // الأجزاء التالية نقاسمها: تواريخ (أسطر قصيرة أرقام) أو فقرات سيرة.
+    // يتكيف تلقائيًا مع صيغة era_data.php القديمة ووصف ملفات poetry_data الجديدة.
+    $isDatesLine = function (string $line): bool {
+        // سطر تاريخ مثل: "303 - 354 ه" أو "915 - 965 م" (قصير وفيه أرقام)
+        // قياس الطول بالأحرف عبر /u بدل mb_strlen (توافقًا مع مضيفات بلا mbstring)
+        return preg_match('/^.{0,25}$/us', $line) === 1 && preg_match('/[\d\u0660-\u0669]/u', $line) === 1;
+    };
+
     foreach ($parts as $part) {
         $lines = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $part)), function ($l) {
             return $l !== '';
@@ -130,11 +176,11 @@ function clean_poet_info(string $info): string
             continue;
         }
 
-        if ($partIndex === 0) {
-            // السطر الأول: اسم الشاعر مشكولًا
-            $html .= '<p class="poet-bio-name">' . htmlspecialchars(implode(' ', $lines), ENT_QUOTES, 'UTF-8') . '</p>';
-        } elseif ($partIndex === 1) {
-            // سطور التواريخ (الهجري والميلادي)
+        // أجزاء أسطرها كلها قصيرة التواريخ → بطاقة تواريخ
+        $datesPart = count($lines) <= 3
+            && array_product(array_map(fn ($l) => (int)$isDatesLine($l), $lines)) === 1;
+
+        if ($datesPart) {
             $html .= '<p class="poet-dates">' . htmlspecialchars(implode(' — ', $lines), ENT_QUOTES, 'UTF-8') . '</p>';
         } else {
             // فقرات السيرة: كل سطر فقرة مستقلة
@@ -142,7 +188,6 @@ function clean_poet_info(string $info): string
                 $html .= '<p>' . htmlspecialchars($bioLine, ENT_QUOTES, 'UTF-8') . '</p>';
             }
         }
-        $partIndex++;
     }
 
     return $html;

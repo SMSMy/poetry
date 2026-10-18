@@ -74,7 +74,7 @@ require 'templates/header.php';
     <?php else: // ========= الصفحة الرئيسية الافتراضية =========
         $pageTitle = 'فهرس الشعراء حسب العصور';
         echo "<script>document.title = 'ديوان العرب - " . addslashes($pageTitle) . "';</script>";
-        $stmt_eras = $pdo->query("SELECT era, COUNT(id) as poet_count FROM poets WHERE era IS NOT NULL AND era != '' GROUP BY era ORDER BY FIELD(era, 'العصر الجاهلي', 'صدر الإسلام', 'الأموي', 'العباسي', 'الأندلسي', 'مملوكي', 'عثماني', 'العصر الحديث')");
+        $stmt_eras = $pdo->query("SELECT era, COUNT(id) as poet_count FROM poets WHERE era IS NOT NULL AND era != '' GROUP BY era ORDER BY FIELD(era, 'العصر الجاهلي', 'المخضرمون', 'صدر الإسلام', 'الأموي', 'العباسي', 'الأندلسي', 'الأيوبي', 'مملوكي', 'عثماني', 'العصر الحديث')");
         $eras = $stmt_eras->fetchAll();
     ?>
         <h1 class="page-title"><?= $pageTitle ?></h1>

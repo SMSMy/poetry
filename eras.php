@@ -4,7 +4,7 @@ require 'functions.php';
 $pageTitle = 'العصور الشعرية';
 require 'templates/header.php';
 
-$stmt = $pdo->query("SELECT era, COUNT(id) as poet_count FROM poets WHERE era IS NOT NULL AND era != '' AND era != 'عصر غير محدد' GROUP BY era ORDER BY FIELD(era, 'العصر الجاهلي', 'صدر الإسلام', 'الأموي', 'العباسي', 'الأندلسي', 'مملوكي', 'عثماني', 'العصر الحديث')");
+$stmt = $pdo->query("SELECT era, COUNT(id) as poet_count FROM poets WHERE era IS NOT NULL AND era != '' AND era != 'عصر غير محدد' GROUP BY era ORDER BY FIELD(era, 'العصر الجاهلي', 'المخضرمون', 'صدر الإسلام', 'الأموي', 'العباسي', 'الأندلسي', 'الأيوبي', 'مملوكي', 'عثماني', 'العصر الحديث')");
 $eras = $stmt->fetchAll();
 ?>
 
